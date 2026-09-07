@@ -30,6 +30,7 @@ function Icon({ name, size = 16 }) {
     pen: <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
     plus: <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
     trash: <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
+    upload: <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
   };
   return <svg viewBox="0 0 24 24" style={s}>{paths[name]}</svg>;
 }
@@ -234,6 +235,60 @@ function saveCustomVocab(list) {
   }
 }
 
+// Turns the HTML that Mammoth produces from a .docx file into a flat list of
+// word objects. Walks the document top to bottom: a bold short paragraph (or
+// a real Heading style) is treated as the current category name, and every
+// table row after it is read as [Japanese, Reading, English]. A section is
+// skipped if its heading mentions "marked" or contains a star, since that's
+// usually a duplicate "starred words" recap table rather than new vocab.
+function parseDocxHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const words = [];
+  let currentCategory = "Imported";
+  let skipSection = false;
+
+  Array.from(doc.body.children).forEach((el) => {
+    const tag = el.tagName.toLowerCase();
+
+    if (/^h[1-6]$/.test(tag)) {
+      currentCategory = el.textContent.trim() || currentCategory;
+      skipSection = /marked|★/i.test(currentCategory);
+      return;
+    }
+
+    if (tag === "p") {
+      const text = el.textContent.trim();
+      const onlyStrong = el.children.length === 1 && ["strong", "b"].includes((el.children[0].tagName || "").toLowerCase());
+      if (onlyStrong && text.length > 0 && text.length < 60) {
+        currentCategory = text;
+        skipSection = /marked|★/i.test(currentCategory);
+      }
+      return;
+    }
+
+    if (tag === "table") {
+      if (skipSection) return;
+      Array.from(el.querySelectorAll("tr")).forEach((tr) => {
+        const cells = Array.from(tr.children).map((td) => td.textContent.trim());
+        if (cells.length < 2) return;
+        const first = cells[0];
+        if (/^japanese$/i.test(first)) return; // header row
+        const jp = cells[0];
+        const reading = cells.length >= 3 ? cells[1] : "";
+        const en = cells.length >= 3 ? cells[2] : cells[1];
+        if (!jp || !en) return;
+        words.push({
+          id: "custom-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+          jp, reading, romaji: "", en,
+          category: currentCategory,
+        });
+      });
+    }
+  });
+
+  return words;
+}
+
 function TextField({ label, value, onChange, placeholder, jp }) {
   return (
     <label className="ui-face" style={{ display: "block", fontSize: 13, color: "#5c584e", fontWeight: 500 }}>
@@ -262,6 +317,42 @@ function AddMode({ customVocab, onAdd, onDelete, onClear, categories }) {
   const [newCat, setNewCat] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [message, setMessage] = useState("");
+  const [docxBusy, setDocxBusy] = useState(false);
+  const [docxMessage, setDocxMessage] = useState("");
+
+  const handleDocxFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setDocxBusy(true);
+    setDocxMessage("");
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      window.mammoth
+        .convertToHtml({ arrayBuffer: ev.target.result })
+        .then((result) => {
+          const parsed = parseDocxHtml(result.value);
+          if (parsed.length === 0) {
+            setDocxMessage("Couldn't find any word tables in that document. It needs tables with Japanese / Reading / English columns.");
+          } else {
+            parsed.forEach(onAdd);
+            const cats = new Set(parsed.map((w) => w.category));
+            setDocxMessage(`Imported ${parsed.length} word${parsed.length === 1 ? "" : "s"} across ${cats.size} categor${cats.size === 1 ? "y" : "ies"}.`);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setDocxMessage("Couldn't read that file. Make sure it's a .docx document.");
+        })
+        .finally(() => setDocxBusy(false));
+    };
+    reader.onerror = () => {
+      setDocxMessage("Couldn't read that file.");
+      setDocxBusy(false);
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = ""; // allow re-uploading the same file name later
+  };
 
   const submitOne = (e) => {
     e.preventDefault();
@@ -378,6 +469,36 @@ function AddMode({ customVocab, onAdd, onDelete, onClear, categories }) {
             Import lines
           </button>
         </form>
+      </div>
+
+      <div style={{ background: "#fff", border: `1px solid ${PAPER_DEEP}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
+        <h3 className="ui-face" style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600, color: INK }}>Import a Word document</h3>
+        <p className="ui-face" style={{ margin: "0 0 14px", fontSize: 13, color: "#8a8574" }}>
+          Upload a .docx like your Chapter 13 sheet. Bold section titles (Nouns, い-Adjectives, ...) become
+          categories, and every table row under them is read as Japanese / Reading / English.
+        </p>
+        <label
+          className="ui-face"
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            padding: "16px", borderRadius: 10, border: `1px dashed ${docxBusy ? "#c9c2ae" : VERMILION}`,
+            background: docxBusy ? "#f5f2ea" : "transparent", color: docxBusy ? "#8a8574" : VERMILION_DEEP,
+            fontSize: 14, fontWeight: 500, cursor: docxBusy ? "default" : "pointer",
+          }}
+        >
+          <Icon name="upload" size={16} />
+          {docxBusy ? "Reading document…" : "Choose a .docx file"}
+          <input
+            type="file"
+            accept=".docx"
+            onChange={handleDocxFile}
+            disabled={docxBusy}
+            style={{ display: "none" }}
+          />
+        </label>
+        {docxMessage && (
+          <p className="ui-face" style={{ marginTop: 12, marginBottom: 0, fontSize: 13, color: INDIGO }}>{docxMessage}</p>
+        )}
       </div>
 
       {message && <p className="ui-face" style={{ fontSize: 13, color: INDIGO, marginBottom: 20 }}>{message}</p>}
