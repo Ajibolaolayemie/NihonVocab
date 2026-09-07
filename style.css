@@ -1,0 +1,17 @@
+  html, body { margin: 0; padding: 0; }
+  * { box-sizing: border-box; }
+  .jp-face { font-family: 'Shippori Mincho', serif; }
+  .ui-face { font-family: 'Inter', sans-serif; }
+  button { font-family: inherit; cursor: pointer; }
+  .cat-chip { transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+  .flip-card { perspective: 1400px; }
+  .flip-inner { transition: transform 0.5s cubic-bezier(.4,.2,.2,1); transform-style: preserve-3d; }
+  .flip-face { backface-visibility: hidden; }
+  .flip-back { transform: rotateY(180deg); }
+  .opt-btn { transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease; }
+  .opt-btn:active { transform: scale(0.985); }
+  @media (max-width: 640px) {
+    .header-wrap { padding: 28px 20px 16px !important; }
+    .content-wrap { padding: 0 20px 60px !important; }
+  }
+</style>
