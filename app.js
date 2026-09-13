@@ -587,12 +587,7 @@ function App() {
     <div style={{ minHeight: "100vh", background: PAPER, color: INK, fontFamily: "'EB Garamond', Georgia, serif" }}>
       <header className="header-wrap" style={{ padding: "40px 40px 20px", borderBottom: `1px solid ${PAPER_DEEP}` }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <p className="ui-face" style={{ margin: 0, fontSize: 13, letterSpacing: "0.02em", color: INDIGO, fontWeight: 500 }}>第十三課</p>
-          <h1 className="jp-face" style={{ margin: "4px 0 6px", fontSize: 42, fontWeight: 600, color: INK, lineHeight: 1.15 }}>単語帳</h1>
-          <p style={{ margin: 0, fontSize: 16, color: "#5c584e", maxWidth: 520 }}>
-            From Chapter 13: Conversation and Grammar — {allVocab.length} words across {allCategories.length} groups
-            {customVocab.length > 0 ? ` (${customVocab.length} added by you)` : ""}.
-          </p>
+          <p className="ui-face" style={{ margin: 0, fontSize: 13, letterSpacing: "0.02em", color: INDIGO, fontWeight: 500 }}>Nihon Vocab</p>
           <div style={{ display: "flex", gap: 10, marginTop: 24, flexWrap: "wrap" }}>
             <ModeButton active={mode === "study"} onClick={() => setMode("study")} icon="book" label="Study" />
             <ModeButton active={mode === "quiz"} onClick={() => setMode("quiz")} icon="pen" label="Quiz" />
