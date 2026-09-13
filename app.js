@@ -474,7 +474,7 @@ function AddMode({ customVocab, onAdd, onDelete, onClear, categories }) {
       <div style={{ background: "#fff", border: `1px solid ${PAPER_DEEP}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
         <h3 className="ui-face" style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600, color: INK }}>Import a Word document</h3>
         <p className="ui-face" style={{ margin: "0 0 14px", fontSize: 13, color: "#8a8574" }}>
-          Upload a .docx like your Chapter 13 sheet. Bold section titles (Nouns, い-Adjectives, ...) become
+          Upload a .docx file. Bold section titles (Nouns, い-Adjectives, ...) become
           categories, and every table row under them is read as Japanese / Reading / English.
         </p>
         <label
